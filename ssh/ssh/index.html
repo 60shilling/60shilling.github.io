@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  
+  
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    
+    
+    <link rel="shortcut icon" href="../../img/favicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <title>Ssh - faint recollection</title>
+    <link href="../../css/bootstrap-3.3.7.min.css" rel="stylesheet">
+    <link href="../../css/font-awesome-4.7.0.css" rel="stylesheet">
+    <link href="../../css/base.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/highlight.css">
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+    <![endif]-->
+
+    <script src="../../js/jquery-3.2.1.min.js"></script>
+    <script src="../../js/bootstrap-3.3.7.min.js"></script>
+    <script src="../../js/highlight.pack.js"></script>
+    
+    <base target="_top">
+    <script>
+      var base_url = '../..';
+      var is_top_frame = false;
+        
+        var pageToc = [
+          {title: "ssh", url: "#_top", children: [
+              {title: "keygen", url: "#keygen" },
+              {title: "connect with generated key", url: "#connect-with-generated-key" },
+              {title: "~/.ssh/config", url: "#sshconfig" },
+              {title: "authorized_keys", url: "#authorized_keys" },
+              {title: "known_hosts", url: "#known_hosts" },
+              {title: "ssh-agent", url: "#ssh-agent" },
+          ]},
+          {title: "- on linux/kde it starts at boot and that's it. (is this true !)", url: "#-on-linuxkde-it-starts-at-boot-and-thats-it-is-this-true", children: [
+              {title: "ssh fingerprints", url: "#ssh-fingerprints" },
+          ]},
+        ];
+
+    </script>
+    <script src="../../js/base.js"></script> 
+</head>
+
+<body>
+<script>
+if (is_top_frame) { $('body').addClass('wm-top-page'); }
+</script>
+
+
+
+<div class="container-fluid wm-page-content">
+  <a name="_top"></a>
+    
+
+    
+
+    <h2 id="ssh">ssh</h2>
+<ul>
+<li><strong>ssh-keygen</strong></li>
+<li><strong>connect with a key</strong></li>
+<li><strong>config file</strong></li>
+<li><strong>authorized_keys &amp; ssh-copy-id</strong></li>
+<li><strong>known_hosts &amp; server authentication</strong></li>
+<li><strong>ssh-agent</strong><ul>
+<li><strong>ssh-add, ssh-add -l, ssh-add -A</strong></li>
+</ul>
+</li>
+<li><strong>recover hung session: type ~. (tilde period)</strong></li>
+<li>
+<p><strong>fingerprints</strong></p>
+</li>
+<li>
+<p>https://www.ssh.com</p>
+</li>
+</ul>
+<h4 id="keygen">keygen</h4>
+<p>lets say we do ed25519<br />
+<code>ssh-keygen -o -a 100 -t ed25519</code><br />
+- -o signifies an option follows
+- -a is argument to -o, says to do 100 "rounds" <br />
+     - this option specifies the number of KDF
+     (key derivation function) rounds to use.  Higher numbers result in
+     slower passphrase verification and increased resistance to brute-
+     force password cracking. 
+- passphrase (aka fingerprint) is optional - it secures the private key.
+- name this key and ssh-keygen stores keys as your_name and your_name.pub.
+- default location for keys is under ~/.ssh</p>
+<h4 id="connect-with-generated-key">connect with generated key</h4>
+<p><code>ssh -i ~/.ssh/id_rsa user@some_host_ip</code>
+- <code>-i</code> tells ssh to use a specific key (id) - here it's <code>.ssh/id_rsa</code></p>
+<h4 id="sshconfig">~/.ssh/config</h4>
+<pre><code class="markdown">Host gitlab.com
+    Hostname gitlab.com
+    User git
+    IdentityFile ~/.ssh/id-notavm-glab
+    User username
+</code></pre>
+
+<ul>
+<li>config has one stanza per remote, starting "Host", then indented statements. </li>
+<li>config has many uses - here it associates gitlab to the correct IdentityFile.</li>
+<li>is it completely necessary when using ssh-agent ?</li>
+</ul>
+<h4 id="authorized_keys">authorized_keys</h4>
+<ul>
+<li>holds public keys (copied here by a trusted user) that enable a remote box to connect to us. </li>
+<li>the remote user runs :
+<code>ssh-copy-id -i ~/.ssh/hand_rsa_key user@some_host_ip</code>
+and gets prompted for their password before ssh copies the key.</li>
+<li>now the remote with the matching private key can connect without further auth. using:
+<code>ssh -i ~/.ssh/hand_rsa_key user@some_host_ip</code>
+though they must specify the correct key ( <code>-i</code>, option )</li>
+</ul>
+<h4 id="known_hosts">known_hosts</h4>
+<ul>
+<li>list of entries, usually of 3 fields<ul>
+<li>ip or hostname, type of cert, and public key in ascii.</li>
+</ul>
+</li>
+<li>your personal certificate authority. You are ascerting to your OS that you have validated these server keys.  </li>
+<li>note that ubuntu hashes the ip/hostname to a fingerprint for additional security.</li>
+<li>servers present their public keys upon your request to connect and ssh checks with known_hosts before proceeding. If everything matches proceed to connect. If only part of record matches then ssh gives user a huge WARNING. If first time seeing this key then ssh asks if you want to add it to known_hosts.</li>
+</ul>
+<h4 id="ssh-agent">ssh-agent</h4>
+<ul>
+<li>a helper program for key mgmt convenience<ul>
+<li>if keys are passworded the agent remembers that throughout a session<br />
+  multi hop without divulging keys :  the agent is able to network authentication traffic betwix your local<br />
+  machine and some server via intermediary machines to which one has already ssh'd.</li>
+</ul>
+</li>
+</ul>
+<h2 id="-on-linuxkde-it-starts-at-boot-and-thats-it-is-this-true">- on linux/kde it starts at boot and that's it. (is this true !)</h2>
+<ul>
+<li>manual start with <code>eval $(ssh-agent)</code><ul>
+<li>(ssh-agent expands to a semi colon separated list of commands that initiates the process and env.)</li>
+<li>to limit the agent to this shell use <code>eval $(ssh-agent $SHELL)</code></li>
+<li>and to kill <code>eval $(ssh-agent -k)</code></li>
+</ul>
+</li>
+<li><strong>ssh-add</strong><ul>
+<li>add a key to ssh-agent. Key is now in memory owned by ssh-agent.</li>
+</ul>
+</li>
+<li><strong>ssh-add -l &amp; ssh-add -L</strong><ul>
+<li>list fingerprints &amp; list keys,  known to ssh-agent</li>
+</ul>
+</li>
+<li><strong>ssh-add -D</strong><ul>
+<li>delete all keys known to ssh-agent</li>
+</ul>
+</li>
+<li><strong>ssh-add -A</strong><ul>
+<li>delivers your keys to a remote box so that box can then access another server.    </li>
+</ul>
+</li>
+</ul>
+<h4 id="ssh-fingerprints">ssh fingerprints</h4>
+<ul>
+<li>a hash of the public key, aka fingerprint, currently it's a SHA256 output as base64</li>
+<li>show with: <code>ssh-add -l</code> or <code>ssh-keygen ~/.ssh/id_rsa.pub</code></li>
+<li>and manually, it's a guddle, since on linux sha256sum ouputs hex :  </li>
+</ul>
+<pre><code class="bash">cat id_rsa.pub | cut -d' ' -f2 | base64 -d | sha256sum | cut -d' ' -f1 | xxd -r -p | base64 | sed 's/=*$//'
+</code></pre>
+
+  <br>
+    
+
+    <br>
+</div>
+
+<footer class="container-fluid wm-page-content">
+  <p>Documentation built with <a href="http://www.mkdocs.org/">MkDocs</a> using <a href="https://github.com/gristlabs/mkdocs-windmill">Windmill</a> theme by Grist Labs.</p>
+</footer>
+
+</body>
+</html>
